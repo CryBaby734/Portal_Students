@@ -1,12 +1,16 @@
 package org.example.studentportal.modul;
 
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
 
+
+import java.util.List;
+
 @Entity
 @Table(name = "lessons")
-@Getter
-@Setter
+@Data
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -24,46 +28,11 @@ public class Lesson {
     @Column(nullable = false)
     private String schedule;
 
-    @Column(nullable = false)
-    private Long studentId;
+    @ManyToOne
+    @JoinColumn(name = "group_id", nullable = false)
+    @JsonIgnore
+    private StudentGroup group; // Урок привязан к группе
 
-    public String getSubject() {
-        return subject;
-    }
-
-    public void setSubject(String subject) {
-        this.subject = subject;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getTeacher() {
-        return teacher;
-    }
-
-    public void setTeacher(String teacher) {
-        this.teacher = teacher;
-    }
-
-    public String getSchedule() {
-        return schedule;
-    }
-
-    public void setSchedule(String schedule) {
-        this.schedule = schedule;
-    }
-
-    public Long getStudentId() {
-        return studentId;
-    }
-
-    public void setStudentId(Long studentId) {
-        this.studentId = studentId;
-    }
+    @OneToMany(mappedBy = "lesson", cascade = CascadeType.ALL)
+    private List<LessonFile> files; // Файлы, прикрепленные к уроку
 }

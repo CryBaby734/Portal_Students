@@ -1,13 +1,11 @@
 package org.example.studentportal.service;
 
-import org.example.studentportal.modul.Admin;
-import org.example.studentportal.modul.Message;
-import org.example.studentportal.modul.Role;
-import org.example.studentportal.modul.Student;
-import org.example.studentportal.repository.AdminRepository;
-import org.example.studentportal.repository.MessageRepository;
-import org.example.studentportal.repository.StudentRepository;
+import jakarta.persistence.EntityNotFoundException;
+import org.example.studentportal.dto.LessonRequest;
+import org.example.studentportal.modul.*;
+import org.example.studentportal.repository.*;
 import org.example.studentportal.util.SecurityUtil;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,21 +14,29 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+
 @Service
 public class AdminService {
     private final AdminRepository adminRepository;
     private final StudentRepository studentRepository;
     private final MessageRepository messageRepository;
     private final SecurityUtil securityUtil;
+    private final StudentGroupRepository studentGroupRepository;
+    private final LessonRepository lessonRepository;
+
+
 
     public AdminService(AdminRepository adminRepository,
                         StudentRepository studentRepository,
                         MessageRepository messageRepository,
-                        SecurityUtil securityUtil) {
+                        SecurityUtil securityUtil, StudentGroupRepository studentGroupRepository, LessonRepository lessonRepository, LessonFileRepository lessonFileRepository) {
         this.adminRepository = adminRepository;
         this.studentRepository = studentRepository;
         this.messageRepository = messageRepository;
         this.securityUtil = securityUtil;
+        this.studentGroupRepository = studentGroupRepository;
+        this.lessonRepository = lessonRepository;
+
     }
 
     // Получение всех сообщений от студентов
@@ -77,11 +83,17 @@ public class AdminService {
     // Назначение роли студенту
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
-    public void assignRoleToStudent(Long studentId, Role role) {
-     Student student = studentRepository.findById(studentId)
-             .orElseThrow(() -> new RuntimeException("Student is not found"));
-     student.setRole(role);
-     studentRepository.save(student);
+    public boolean assignRoleToStudent(Long studentId, Role role) {
+        Student student = studentRepository.findById(studentId)
+                .orElseThrow(() -> new EntityNotFoundException("Студент с ID " + studentId + " не найден."));
+
+        if (student.getRole() == role) {
+            throw new IllegalStateException("Студент уже имеет роль " + role);
+        }
+
+        student.setRole(role);
+        studentRepository.save(student);
+        return true; // ✅ Вернем true, если операция прошла успешно
     }
 
     @PreAuthorize("hasRole('ADMIN')")
@@ -89,4 +101,42 @@ public class AdminService {
     public Optional<Admin> findAdminByEmail(String email) {
         return adminRepository.findByEmail(email);
     }
+
+    public StudentGroup createGroup(StudentGroup studentGroup){
+        if(studentGroupRepository.existsByName(studentGroup.getName())){
+            throw new RuntimeException("Group such name is not exist!");
+        }
+        return studentGroupRepository.save(studentGroup);
+    }
+
+    @Transactional
+    public void createLesson(LessonRequest lessonRequest) {
+        // Проверяем, существует ли группа
+        StudentGroup group = studentGroupRepository.findById(lessonRequest.getGroupId())
+                .orElseThrow(() -> new RuntimeException("Группа не найдена"));
+
+        // Создаем новый урок и привязываем его к группе
+        Lesson lesson = Lesson.builder()
+                .group(group)
+                .subject(lessonRequest.getSubject())
+                .teacher(lessonRequest.getTeacher())
+                .schedule(lessonRequest.getSchedule())
+                .build();
+
+        // Сохраняем урок
+        lessonRepository.save(lesson);
+    }
+
+    public void addStudentToGroup(String studentEmail, Long groupId) {
+        Student student = studentRepository.findByEmail(studentEmail)
+                .orElseThrow(() -> new RuntimeException("Student is not found"));
+
+        StudentGroup group = studentGroupRepository.findById(groupId)
+                .orElseThrow(() -> new RuntimeException("Group is not found"));
+
+        student.setGroup(group);
+        studentRepository.save(student);
+    }
+
+
 }

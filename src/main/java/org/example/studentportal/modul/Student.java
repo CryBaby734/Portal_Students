@@ -1,5 +1,7 @@
 package org.example.studentportal.modul;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -33,6 +35,11 @@ public class Student {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private Role role; // Поле для роли STUDENT или ADMIN
+
+    @ManyToOne
+    @JoinColumn(name = "group_id")
+    @JsonIgnore
+    private StudentGroup group;
 
     @Column(nullable = false)
     private boolean active;
@@ -93,4 +100,6 @@ public class Student {
     public void setActive(boolean active) {
         this.active = active;
     }
+
+
 }
